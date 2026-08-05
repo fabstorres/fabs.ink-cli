@@ -23,12 +23,35 @@ export const UpdateResponseSchema = Schema.Struct({
 
 export type UpdateResponse = typeof UpdateResponseSchema.Type
 
+export const ProfileKindSchema = Schema.Literal("guest", "user")
+
 export const ProfileSchema = Schema.Struct({
   name: Schema.String,
   authToken: Schema.String,
+  // Profiles written before OAuth support have no kind and decode as guests.
+  kind: Schema.optionalWith(ProfileKindSchema, { default: () => "guest" as const }),
 })
 
 export type Profile = typeof ProfileSchema.Type
+
+export const DeviceCodeResponseSchema = Schema.Struct({
+  device_code: Schema.NonEmptyString,
+  user_code: Schema.NonEmptyString,
+  verification_uri: Schema.NonEmptyString,
+  verification_uri_complete: Schema.NonEmptyString,
+  expires_in: Schema.Number.pipe(Schema.int(), Schema.positive()),
+  interval: Schema.Number.pipe(Schema.int(), Schema.positive()),
+})
+
+export type DeviceCodeResponse = typeof DeviceCodeResponseSchema.Type
+
+export const DeviceTokenResponseSchema = Schema.Struct({
+  access_token: Schema.NonEmptyString,
+  token_type: Schema.Literal("Bearer"),
+  handle: Schema.NonEmptyString,
+})
+
+export type DeviceTokenResponse = typeof DeviceTokenResponseSchema.Type
 
 export const ConfigFileSchema = Schema.Struct({
   version: Schema.Literal(1),
@@ -75,6 +98,10 @@ export class InvalidResponseError extends Data.TaggedError("InvalidResponseError
   readonly reason: string
 }> {}
 
+export class DeviceAuthorizationExpiredError extends Data.TaggedError(
+  "DeviceAuthorizationExpiredError",
+)<{}> {}
+
 export type AppError =
   | InvalidEndpointError
   | HtmlFileError
@@ -84,3 +111,4 @@ export type AppError =
   | NetworkError
   | ApiError
   | InvalidResponseError
+  | DeviceAuthorizationExpiredError

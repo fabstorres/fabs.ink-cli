@@ -1,6 +1,12 @@
 import { FileSystem } from "@effect/platform"
-import { Console, Effect, Option } from "effect"
+import { Console, Duration, Effect, Option } from "effect"
 
+import {
+  type AuthMode,
+  pollDeviceAuthorization,
+  startDeviceAuthorization,
+} from "./auth.ts"
+import { openBrowserOptional } from "./browser.ts"
 import {
   defaultConfigPath,
   loadProfile,
@@ -12,6 +18,7 @@ import {
   setConfiguredEndpoint,
 } from "./config.ts"
 import {
+  DeviceAuthorizationExpiredError,
   HtmlFileError,
   InvalidInkIdError,
   MAX_HTML_BYTES,
@@ -96,6 +103,8 @@ export const publishFile = ({ file, endpoint: endpointOverride, json }: PublishO
     yield* saveProfile(configPath, endpoint, {
       name: result.name,
       authToken: result.auth_token,
+      kind:
+        Option.isSome(profile) && profile.value.kind === "user" ? "user" : "guest",
     })
 
     if (json) {
@@ -184,12 +193,65 @@ export const showIdentity = (endpointOverride: Option.Option<string>, json: bool
     }
     if (json) {
       yield* Console.log(
-        JSON.stringify({ endpoint, authenticated: true, name: profile.value.name }),
+        JSON.stringify({
+          endpoint,
+          authenticated: true,
+          kind: profile.value.kind,
+          name: profile.value.name,
+        }),
       )
     } else {
-      yield* Console.log(profile.value.name)
+      yield* Console.log(
+        profile.value.kind === "user" ? `@${profile.value.name}` : profile.value.name,
+      )
       yield* Console.log(endpoint)
     }
+  })
+
+export const authenticate = (
+  mode: AuthMode,
+  endpointOverride: Option.Option<string>,
+) =>
+  Effect.gen(function* () {
+    const configPath = yield* defaultConfigPath
+    const endpoint = yield* resolveEndpoint(configPath, endpointOverride)
+    const profile = yield* loadProfile(configPath, endpoint)
+    const guestToken =
+      mode === "signup" &&
+      Option.isSome(profile) &&
+      profile.value.kind === "guest"
+        ? Option.some(profile.value.authToken)
+        : Option.none<string>()
+    const start = yield* startDeviceAuthorization(endpoint, mode, guestToken)
+
+    yield* Console.log("Your device code")
+    yield* Console.log("")
+    yield* Console.log(start.user_code)
+    yield* Console.log("")
+    yield* Console.log(`Open: ${start.verification_uri_complete}`)
+    yield* openBrowserOptional(start.verification_uri_complete)
+    yield* Console.log("Waiting for browser confirmation…")
+
+    const deadline = Date.now() + Math.max(0, start.expires_in) * 1_000
+    const interval = Duration.seconds(Math.max(1, start.interval))
+    while (Date.now() < deadline) {
+      yield* Effect.sleep(interval)
+      const result = yield* pollDeviceAuthorization(endpoint, start.device_code)
+      if (result._tag === "Pending") continue
+      if (result._tag === "Expired") {
+        return yield* new DeviceAuthorizationExpiredError()
+      }
+
+      yield* saveProfile(configPath, endpoint, {
+        kind: "user",
+        name: result.credentials.handle,
+        authToken: result.credentials.access_token,
+      })
+      yield* Console.log(`Signed in as @${result.credentials.handle}`)
+      return
+    }
+
+    return yield* new DeviceAuthorizationExpiredError()
   })
 
 export const logout = (endpointOverride: Option.Option<string>) =>

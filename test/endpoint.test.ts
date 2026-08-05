@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test"
 import { Effect, Either } from "effect"
 
-import { inkUrl, normalizeEndpoint, publishUrl } from "../src/endpoint.ts"
+import {
+  deviceAuthStartUrl,
+  deviceAuthTokenUrl,
+  inkUrl,
+  normalizeEndpoint,
+  publishUrl,
+} from "../src/endpoint.ts"
 
 describe("normalizeEndpoint", () => {
   test("normalizes a server base URL", async () => {
@@ -13,6 +19,12 @@ describe("normalizeEndpoint", () => {
     expect(publishUrl(endpoint)).toBe("http://127.0.0.1:3000/publish")
     expect(inkUrl(endpoint, "document-id")).toBe(
       "http://127.0.0.1:3000/inks/document-id",
+    )
+    expect(deviceAuthStartUrl(endpoint, "signup")).toBe(
+      "http://127.0.0.1:3000/auth/device/signup",
+    )
+    expect(deviceAuthTokenUrl(endpoint)).toBe(
+      "http://127.0.0.1:3000/auth/device/token",
     )
   })
 

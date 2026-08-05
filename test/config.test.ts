@@ -45,12 +45,14 @@ describe("config", () => {
       saveProfile(configPath, endpoint, {
         name: "calm-writer-0042",
         authToken: "first-token",
+        kind: "guest",
       }),
     )
     await run(
       saveProfile(configPath, endpoint, {
         name: "calm-writer-0042",
         authToken: "rotated-token",
+        kind: "user",
       }),
     )
 
@@ -58,6 +60,7 @@ describe("config", () => {
     expect(Option.getOrThrow(profile)).toEqual({
       name: "calm-writer-0042",
       authToken: "rotated-token",
+      kind: "user",
     })
     expect((await stat(configPath)).mode & 0o777).toBe(0o600)
     expect(JSON.parse(await readFile(configPath, "utf8"))).toEqual({
@@ -67,6 +70,7 @@ describe("config", () => {
         [endpoint]: {
           name: "calm-writer-0042",
           authToken: "rotated-token",
+          kind: "user",
         },
       },
     })
@@ -91,6 +95,31 @@ describe("config", () => {
         ),
       ),
     ).toBe("http://localhost:4000")
+  })
+
+  test("reads profiles written before OAuth support as guests", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "fabs-ink-cli-"))
+    temporaryDirectories.push(directory)
+    const configPath = join(directory, "config.json")
+    const endpoint = "https://fabs.ink"
+    await Bun.write(
+      configPath,
+      JSON.stringify({
+        version: 1,
+        profiles: {
+          [endpoint]: {
+            name: "calm-writer-0042",
+            authToken: "legacy-token",
+          },
+        },
+      }),
+    )
+
+    expect(Option.getOrThrow(await run(loadProfile(configPath, endpoint)))).toEqual({
+      name: "calm-writer-0042",
+      authToken: "legacy-token",
+      kind: "guest",
+    })
   })
 
   test("an environment endpoint overrides saved configuration", async () => {

@@ -10,6 +10,28 @@ The first publish creates a generated publisher identity. The CLI stores the
 one-time token returned by the server and replaces it after every successful
 publish, so later pages keep the same publisher subdomain.
 
+Turn that guest identity into an account with Google OAuth:
+
+```bash
+npx @fabs.ink/cli signup
+```
+
+The CLI prints a short device code and verification URL, attempts to open that
+URL in the default browser, and waits for authorization. Existing guest pages
+move to the handle chosen during signup. The Google client secret and OAuth
+callback remain on the fabs.ink server; the CLI receives only its own bearer
+session.
+
+Use `login` for an existing account on a new machine or in another terminal:
+
+```bash
+npx @fabs.ink/cli login
+```
+
+Each login creates an independent CLI session. If the current CLI still has a
+guest identity whose pages you want to keep, run `signup` instead so the server
+can transfer those pages.
+
 Use the `id` returned by `publish --json` to replace or delete that document:
 
 ```bash
@@ -62,12 +84,16 @@ FABS_INK_API_URL=http://127.0.0.1:3000 bun run src/cli.ts publish index.html
 Reset to production with `bun run src/cli.ts config reset-endpoint`. Publisher
 credentials are stored in the same config file and isolated per endpoint, so
 local and production tokens do not overwrite each other. Because it contains
-tokens, the CLI writes the file with owner-only permissions.
+tokens, the CLI updates the file atomically with owner-only permissions. Config
+files written before OAuth support remain valid and are treated as guest
+profiles until signup succeeds.
 
 ## Commands
 
 ```text
 fabs.ink publish <file> [--endpoint URL] [--json]
+fabs.ink signup [--endpoint URL]
+fabs.ink login [--endpoint URL]
 fabs.ink update <id> <file> [--endpoint URL] [--json]
 fabs.ink delete <id> [--endpoint URL] [--json]
 fabs.ink whoami [--endpoint URL] [--json]

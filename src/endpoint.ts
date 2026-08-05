@@ -33,3 +33,11 @@ export const publishUrl = (endpoint: string): string => `${endpoint}/publish`
 
 export const inkUrl = (endpoint: string, id: string): string =>
   `${endpoint}/inks/${encodeURIComponent(id)}`
+
+export const deviceAuthStartUrl = (
+  endpoint: string,
+  mode: "signup" | "login",
+): string => `${endpoint}/auth/device/${mode}`
+
+export const deviceAuthTokenUrl = (endpoint: string): string =>
+  `${endpoint}/auth/device/token`

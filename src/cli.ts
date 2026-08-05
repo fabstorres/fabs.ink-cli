@@ -7,6 +7,7 @@ import { Console, Effect, Layer } from "effect"
 
 import type { AppError } from "./domain.ts"
 import {
+  authenticate,
   configureEndpoint,
   deleteDocument,
   logout,
@@ -62,6 +63,20 @@ const deleteCommand = Command.make(
   deleteDocument,
 ).pipe(Command.withDescription("Delete a published HTML document"))
 
+const signup = Command.make(
+  "signup",
+  { endpoint },
+  ({ endpoint }) => authenticate("signup", endpoint),
+).pipe(
+  Command.withDescription("Create an account and upgrade the saved guest identity"),
+)
+
+const login = Command.make(
+  "login",
+  { endpoint },
+  ({ endpoint }) => authenticate("login", endpoint),
+).pipe(Command.withDescription("Sign in with Google in your browser"))
+
 const whoami = Command.make(
   "whoami",
   { endpoint, json },
@@ -103,6 +118,8 @@ const root = Command.make("fabs.ink").pipe(
   Command.withDescription("Publish safe HTML pages to fabs.ink"),
   Command.withSubcommands([
     publish,
+    signup,
+    login,
     update,
     deleteCommand,
     whoami,
@@ -135,11 +152,13 @@ const renderError = (error: AppError): Effect.Effect<void> => {
     case "ApiError":
       return Console.error(
         error.status === 401
-          ? "The saved publisher token is no longer valid. Run `fabs.ink logout`, then publish again to create a new identity."
+          ? `The saved publisher token is no longer valid (${error.message}). Run \`fabs.ink logout\`, then log in or publish again.`
           : `Request failed (${error.status}): ${error.message}`,
       )
     case "InvalidResponseError":
       return Console.error(`The server returned an invalid response: ${error.reason}`)
+    case "DeviceAuthorizationExpiredError":
+      return Console.error("The sign-in code expired. Run the command again.")
   }
 }
 
@@ -152,6 +171,7 @@ const appErrorTags = new Set<AppError["_tag"]>([
   "NetworkError",
   "ApiError",
   "InvalidResponseError",
+  "DeviceAuthorizationExpiredError",
 ])
 
 const isAppError = (error: unknown): error is AppError =>
