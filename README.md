@@ -10,6 +10,15 @@ The first publish creates a generated publisher identity. The CLI stores the
 one-time token returned by the server and replaces it after every successful
 publish, so later pages keep the same publisher subdomain.
 
+Use the `id` returned by `publish --json` to replace or delete that document:
+
+```bash
+fabs.ink update DOCUMENT_ID replacement.html
+fabs.ink delete DOCUMENT_ID
+```
+
+Update and delete use the latest saved token and do not rotate it.
+
 ## Development
 
 This project uses Bun, Effect, `@effect/cli`, and `@effect/platform`.
@@ -59,6 +68,8 @@ tokens, the CLI writes the file with owner-only permissions.
 
 ```text
 fabs.ink publish <file> [--endpoint URL] [--json]
+fabs.ink update <id> <file> [--endpoint URL] [--json]
+fabs.ink delete <id> [--endpoint URL] [--json]
 fabs.ink whoami [--endpoint URL] [--json]
 fabs.ink logout [--endpoint URL]
 fabs.ink config [--json]

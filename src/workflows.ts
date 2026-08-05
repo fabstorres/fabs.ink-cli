@@ -11,9 +11,14 @@ import {
   saveProfile,
   setConfiguredEndpoint,
 } from "./config.ts"
-import { HtmlFileError, MAX_HTML_BYTES } from "./domain.ts"
+import {
+  HtmlFileError,
+  InvalidInkIdError,
+  MAX_HTML_BYTES,
+  MissingProfileError,
+} from "./domain.ts"
 import { DEFAULT_ENDPOINT } from "./endpoint.ts"
-import { publishHtml } from "./publisher.ts"
+import { deleteInk, publishHtml, updateInk } from "./publisher.ts"
 
 const reasonOf = (cause: unknown): string =>
   cause instanceof Error ? cause.message : String(cause)
@@ -24,11 +29,9 @@ export interface PublishOptions {
   readonly json: boolean
 }
 
-export const publishFile = ({ file, endpoint: endpointOverride, json }: PublishOptions) =>
+const readHtmlFile = (file: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const configPath = yield* defaultConfigPath
-    const endpoint = yield* resolveEndpoint(configPath, endpointOverride)
     const bytes = yield* fs.readFile(file).pipe(
       Effect.mapError(
         (cause) => new HtmlFileError({ path: file, reason: reasonOf(cause) }),
@@ -47,6 +50,39 @@ export const publishFile = ({ file, endpoint: endpointOverride, json }: PublishO
     if (html.trim().length === 0) {
       return yield* new HtmlFileError({ path: file, reason: "HTML must not be empty" })
     }
+    return html
+  })
+
+const validateInkId = (id: string) =>
+  Effect.try({
+    try: () => {
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          id,
+        )
+      ) {
+        throw new Error("invalid UUID")
+      }
+      return id
+    },
+    catch: () => new InvalidInkIdError({ id }),
+  })
+
+const requireProfile = (configPath: string, endpoint: string) =>
+  loadProfile(configPath, endpoint).pipe(
+    Effect.flatMap(
+      Option.match({
+        onNone: () => new MissingProfileError({ endpoint }),
+        onSome: Effect.succeed,
+      }),
+    ),
+  )
+
+export const publishFile = ({ file, endpoint: endpointOverride, json }: PublishOptions) =>
+  Effect.gen(function* () {
+    const configPath = yield* defaultConfigPath
+    const endpoint = yield* resolveEndpoint(configPath, endpointOverride)
+    const html = yield* readHtmlFile(file)
 
     const profile = yield* loadProfile(configPath, endpoint)
     const result = yield* publishHtml(
@@ -77,6 +113,63 @@ export const publishFile = ({ file, endpoint: endpointOverride, json }: PublishO
       yield* Console.log(result.url)
       yield* Console.log(`Publisher: ${result.name}`)
     }
+  })
+
+export interface UpdateOptions extends PublishOptions {
+  readonly id: string
+}
+
+export const updateFile = ({
+  id: idInput,
+  file,
+  endpoint: endpointOverride,
+  json,
+}: UpdateOptions) =>
+  Effect.gen(function* () {
+    const id = yield* validateInkId(idInput)
+    const configPath = yield* defaultConfigPath
+    const endpoint = yield* resolveEndpoint(configPath, endpointOverride)
+    const profile = yield* requireProfile(configPath, endpoint)
+    const html = yield* readHtmlFile(file)
+    const result = yield* updateInk(endpoint, id, html, profile.authToken)
+
+    if (json) {
+      yield* Console.log(
+        JSON.stringify({
+          id: result.id,
+          name: result.name,
+          slug: result.slug,
+          url: result.url,
+          local_url: result.local_url,
+        }),
+      )
+    } else {
+      yield* Console.log(`Updated ${id} from ${file}`)
+      yield* Console.log(result.url)
+      yield* Console.log(`Publisher: ${result.name}`)
+    }
+  })
+
+export interface DeleteOptions {
+  readonly id: string
+  readonly endpoint: Option.Option<string>
+  readonly json: boolean
+}
+
+export const deleteDocument = ({
+  id: idInput,
+  endpoint: endpointOverride,
+  json,
+}: DeleteOptions) =>
+  Effect.gen(function* () {
+    const id = yield* validateInkId(idInput)
+    const configPath = yield* defaultConfigPath
+    const endpoint = yield* resolveEndpoint(configPath, endpointOverride)
+    const profile = yield* requireProfile(configPath, endpoint)
+    yield* deleteInk(endpoint, id, profile.authToken)
+
+    if (json) yield* Console.log(JSON.stringify({ id, deleted: true }))
+    else yield* Console.log(`Deleted ${id}`)
   })
 
 export const showIdentity = (endpointOverride: Option.Option<string>, json: boolean) =>

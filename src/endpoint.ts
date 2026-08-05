@@ -31,3 +31,5 @@ export const normalizeEndpoint = (
 
 export const publishUrl = (endpoint: string): string => `${endpoint}/publish`
 
+export const inkUrl = (endpoint: string, id: string): string =>
+  `${endpoint}/inks/${encodeURIComponent(id)}`

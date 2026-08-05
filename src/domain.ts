@@ -13,6 +13,16 @@ export const PublishResponseSchema = Schema.Struct({
 
 export type PublishResponse = typeof PublishResponseSchema.Type
 
+export const UpdateResponseSchema = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  slug: Schema.String,
+  url: Schema.String,
+  local_url: Schema.String,
+})
+
+export type UpdateResponse = typeof UpdateResponseSchema.Type
+
 export const ProfileSchema = Schema.Struct({
   name: Schema.String,
   authToken: Schema.String,
@@ -38,6 +48,14 @@ export class HtmlFileError extends Data.TaggedError("HtmlFileError")<{
   readonly reason: string
 }> {}
 
+export class InvalidInkIdError extends Data.TaggedError("InvalidInkIdError")<{
+  readonly id: string
+}> {}
+
+export class MissingProfileError extends Data.TaggedError("MissingProfileError")<{
+  readonly endpoint: string
+}> {}
+
 export class ConfigError extends Data.TaggedError("ConfigError")<{
   readonly path: string
   readonly reason: string
@@ -60,6 +78,8 @@ export class InvalidResponseError extends Data.TaggedError("InvalidResponseError
 export type AppError =
   | InvalidEndpointError
   | HtmlFileError
+  | InvalidInkIdError
+  | MissingProfileError
   | ConfigError
   | NetworkError
   | ApiError

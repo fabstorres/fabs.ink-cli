@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Effect, Either } from "effect"
 
-import { normalizeEndpoint, publishUrl } from "../src/endpoint.ts"
+import { inkUrl, normalizeEndpoint, publishUrl } from "../src/endpoint.ts"
 
 describe("normalizeEndpoint", () => {
   test("normalizes a server base URL", async () => {
@@ -11,6 +11,9 @@ describe("normalizeEndpoint", () => {
 
     expect(endpoint).toBe("http://127.0.0.1:3000")
     expect(publishUrl(endpoint)).toBe("http://127.0.0.1:3000/publish")
+    expect(inkUrl(endpoint, "document-id")).toBe(
+      "http://127.0.0.1:3000/inks/document-id",
+    )
   })
 
   test("rejects unsafe or ambiguous URLs", async () => {
@@ -27,4 +30,3 @@ describe("normalizeEndpoint", () => {
     }
   })
 })
-
