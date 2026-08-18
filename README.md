@@ -1,92 +1,55 @@
 # fabs.ink CLI
 
-Publish an HTML file to [fabs.ink](https://fabs.ink) from the command line.
+Publish HTML files to [fabs.ink](https://fabs.ink) from the command line.
+
+## Installation
+
+[Install Bun](https://bun.sh), then install the CLI globally:
 
 ```bash
-npx @fabs.ink/cli publish index.html
+bun add --global @fabs.ink/cli
 ```
 
-The first publish creates a generated publisher identity. The CLI stores the
-one-time token returned by the server and replaces it after every successful
-publish, so later pages keep the same publisher subdomain.
+## Quick start
 
-Turn that guest identity into an account with Google OAuth:
+Publish an HTML file:
 
 ```bash
-npx @fabs.ink/cli signup
+fabs.ink publish index.html
 ```
 
-The CLI prints a short device code and verification URL, attempts to open that
-URL in the default browser, and waits for authorization. Existing guest pages
-move to the handle chosen during signup. The Google client secret and OAuth
-callback remain on the fabs.ink server; the CLI receives only its own bearer
-session.
+Your first publish creates a guest identity. Future publishes reuse that
+identity so your pages stay on the same publisher subdomain.
 
-Use `login` for an existing account on a new machine or in another terminal:
+Create an account when you are ready to keep that identity:
 
 ```bash
-npx @fabs.ink/cli login
+fabs.ink signup
 ```
 
-Each login creates an independent CLI session. If the current CLI still has a
-guest identity whose pages you want to keep, run `signup` instead so the server
-can transfer those pages.
+Use `login` when signing in to an existing account on another machine:
 
-Use the `id` returned by `publish --json` to replace or delete that document:
+```bash
+fabs.ink login
+```
+
+If the current machine has guest pages you want to keep, use `signup` instead
+so those pages can move to your new account.
+
+## Manage documents
+
+Use `--json` when publishing to get the document ID:
+
+```bash
+fabs.ink publish index.html --json
+```
+
+Pass that ID to `update` or `delete`:
 
 ```bash
 fabs.ink update DOCUMENT_ID replacement.html
 fabs.ink delete DOCUMENT_ID
 ```
-
-Update and delete use the latest saved token and do not rotate it.
-
-## Development
-
-This project uses Bun, Effect, `@effect/cli`, and `@effect/platform`.
-
-```bash
-bun install
-bun run verify
-bun run src/cli.ts --help
-```
-
-To publish against a local server:
-
-```bash
-cargo run --manifest-path ../fabs_ink-server/Cargo.toml
-bun run src/cli.ts config set-endpoint http://127.0.0.1:3000
-bun run src/cli.ts publish index.html
-```
-
-The CLI creates `~/.fabs.ink/config.json` when configuration or credentials are
-first saved. No project `.env` file is needed. Inspect the effective endpoint
-and config location with:
-
-```bash
-bun run src/cli.ts config
-```
-
-Endpoint selection uses this precedence:
-
-1. `--endpoint URL` for a single command
-2. An inline `FABS_INK_API_URL` environment variable
-3. The endpoint saved in `~/.fabs.ink/config.json`
-4. `https://fabs.ink` as the production default
-
-For example, CI or a one-off local run can override the endpoint without
-changing the config file:
-
-```bash
-FABS_INK_API_URL=http://127.0.0.1:3000 bun run src/cli.ts publish index.html
-```
-
-Reset to production with `bun run src/cli.ts config reset-endpoint`. Publisher
-credentials are stored in the same config file and isolated per endpoint, so
-local and production tokens do not overwrite each other. Because it contains
-tokens, the CLI updates the file atomically with owner-only permissions. Config
-files written before OAuth support remain valid and are treated as guest
-profiles until signup succeeds.
 
 ## Commands
 
@@ -103,12 +66,25 @@ fabs.ink config set-endpoint <url>
 fabs.ink config reset-endpoint
 ```
 
-`--json` intentionally omits the rotating auth token because the CLI manages it
-as a local credential.
+Run `fabs.ink --help` or `fabs.ink <command> --help` for more details.
 
-## Package naming
+## Development
 
-npm requires scoped packages to contain both a scope and a package name, so
-`@fabs.ink` alone cannot be published as an npm package. The valid package name
-is `@fabs.ink/cli`, producing the invocation shown above. Once installed, both
-`fabs.ink` and `fabs-ink` binaries are available.
+```bash
+bun install
+bun run verify
+bun run src/cli.ts --help
+```
+
+To use a local fabs.ink server:
+
+```bash
+bun run src/cli.ts config set-endpoint http://127.0.0.1:3000
+bun run src/cli.ts publish index.html
+```
+
+Restore the production endpoint with:
+
+```bash
+bun run src/cli.ts config reset-endpoint
+```
