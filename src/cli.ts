@@ -1,20 +1,23 @@
 #!/usr/bin/env bun
 
-import { Args, Command, Options } from "@effect/cli"
+import { Args, Command, Options, Prompt } from "@effect/cli"
 import { FetchHttpClient } from "@effect/platform"
 import { BunContext, BunRuntime } from "@effect/platform-bun"
 import { Console, Effect, Layer } from "effect"
 
 import type { AppError } from "./domain.ts"
+import { SKILL_PROVIDERS } from "./skill.ts"
 import {
   authenticate,
   configureEndpoint,
   deleteDocument,
+  installHtmlDocumentSkill,
   logout,
   publishFile,
   resetEndpoint,
   showConfig,
   showIdentity,
+  uninstallHtmlDocumentSkill,
   updateFile,
 } from "./workflows.ts"
 
@@ -114,6 +117,44 @@ const configCommand = Command.make(
   Command.withSubcommands([setEndpoint, resetEndpointCommand]),
 )
 
+const install = Command.make("install", {}, () =>
+  Effect.gen(function* () {
+    const scope = yield* Prompt.select({
+      message: "Where should the skill be installed?",
+      choices: [
+        {
+          title: "Global",
+          value: "global" as const,
+          description: "Available in every project",
+        },
+        {
+          title: "Project",
+          value: "project" as const,
+          description: "Available only in the current project",
+        },
+      ],
+    })
+    const providers = yield* Prompt.multiSelect({
+      message: "Which providers should use the skill?",
+      choices: SKILL_PROVIDERS.map(({ id, name }) => ({
+        title: name,
+        value: id,
+      })),
+      min: 1,
+    })
+
+    yield* installHtmlDocumentSkill(scope, providers)
+  }),
+).pipe(Command.withDescription("Install the Ink skill"))
+
+const uninstall = Command.make(
+  "uninstall",
+  {},
+  () => uninstallHtmlDocumentSkill,
+).pipe(
+  Command.withDescription("Remove global skills and the saved CLI configuration"),
+)
+
 const root = Command.make("fabs.ink").pipe(
   Command.withDescription("Publish safe HTML pages to fabs.ink"),
   Command.withSubcommands([
@@ -125,6 +166,8 @@ const root = Command.make("fabs.ink").pipe(
     whoami,
     logoutCommand,
     configCommand,
+    install,
+    uninstall,
   ]),
 )
 
@@ -147,6 +190,8 @@ const renderError = (error: AppError): Effect.Effect<void> => {
       )
     case "ConfigError":
       return Console.error(`Could not update config at ${error.path}: ${error.reason}`)
+    case "SkillInstallError":
+      return Console.error(`Could not update skill at ${error.path}: ${error.reason}`)
     case "NetworkError":
       return Console.error(`Could not reach ${error.endpoint}: ${error.reason}`)
     case "ApiError":
@@ -168,6 +213,7 @@ const appErrorTags = new Set<AppError["_tag"]>([
   "InvalidInkIdError",
   "MissingProfileError",
   "ConfigError",
+  "SkillInstallError",
   "NetworkError",
   "ApiError",
   "InvalidResponseError",

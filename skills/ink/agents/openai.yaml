@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ink"
+  short_description: "Create and publish static fabs.ink documents"
+  default_prompt: "Use Ink to turn my content into a polished, static fabs.ink document and publish it when requested."

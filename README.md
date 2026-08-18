@@ -36,6 +36,28 @@ fabs.ink login
 If the current machine has guest pages you want to keep, use `signup` instead
 so those pages can move to your new account.
 
+## Install the Ink skill
+
+Install the bundled Ink skill so your coding agent can create static,
+server-compatible documents and publish them with fabs.ink when requested:
+
+```bash
+fabs.ink install
+```
+
+The installer first asks whether the skill is global or project-specific, then
+lets you select one or more providers. It supports Claude Code, Codex, Cursor,
+Gemini CLI, and GitHub Copilot.
+
+Remove the saved CLI config and every global copy of the skill with:
+
+```bash
+fabs.ink uninstall
+```
+
+Project copies are left in place because the CLI does not track previous
+project locations.
+
 ## Manage documents
 
 Use `--json` when publishing to get the document ID:
@@ -64,6 +86,8 @@ fabs.ink logout [--endpoint URL]
 fabs.ink config [--json]
 fabs.ink config set-endpoint <url>
 fabs.ink config reset-endpoint
+fabs.ink install
+fabs.ink uninstall
 ```
 
 Run `fabs.ink --help` or `fabs.ink <command> --help` for more details.

@@ -9,6 +9,7 @@
   },
   "files": [
     "dist",
+    "skills",
     "README.md",
     "LICENSE"
   ],
@@ -21,7 +22,9 @@
   },
   "keywords": [
     "fabs.ink",
+    "ink",
     "html",
+    "html-document",
     "publish",
     "cli"
   ],

@@ -84,6 +84,11 @@ export class ConfigError extends Data.TaggedError("ConfigError")<{
   readonly reason: string
 }> {}
 
+export class SkillInstallError extends Data.TaggedError("SkillInstallError")<{
+  readonly path: string
+  readonly reason: string
+}> {}
+
 export class NetworkError extends Data.TaggedError("NetworkError")<{
   readonly endpoint: string
   readonly reason: string
@@ -108,6 +113,7 @@ export type AppError =
   | InvalidInkIdError
   | MissingProfileError
   | ConfigError
+  | SkillInstallError
   | NetworkError
   | ApiError
   | InvalidResponseError

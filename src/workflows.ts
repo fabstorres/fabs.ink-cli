@@ -26,6 +26,12 @@ import {
 } from "./domain.ts"
 import { DEFAULT_ENDPOINT } from "./endpoint.ts"
 import { deleteInk, publishHtml, updateInk } from "./publisher.ts"
+import {
+  installSkill,
+  type SkillProvider,
+  type SkillScope,
+  uninstallSkill,
+} from "./skill.ts"
 
 const reasonOf = (cause: unknown): string =>
   cause instanceof Error ? cause.message : String(cause)
@@ -304,4 +310,31 @@ export const resetEndpoint = Effect.gen(function* () {
   yield* resetConfiguredEndpoint(configPath)
   yield* Console.log(`Endpoint reset to ${DEFAULT_ENDPOINT}`)
   yield* Console.log(`Config: ${configPath}`)
+})
+
+// Install the bundled Ink skill for the selected providers.
+export const installHtmlDocumentSkill = (
+  scope: SkillScope,
+  providers: ReadonlyArray<SkillProvider>,
+) =>
+  Effect.gen(function* () {
+    const destinations = yield* installSkill(scope, providers)
+    yield* Console.log(`Installed for ${scope} use:`)
+    for (const destination of destinations) yield* Console.log(destination)
+  })
+
+// Remove global skill copies and the local CLI configuration file.
+export const uninstallHtmlDocumentSkill = Effect.gen(function* () {
+  const configPath = yield* defaultConfigPath
+  const result = yield* uninstallSkill(configPath)
+
+  if (result.skillFiles.length === 0 && !result.configRemoved) {
+    yield* Console.log("Nothing to uninstall")
+    return
+  }
+
+  for (const skillFile of result.skillFiles) {
+    yield* Console.log(`Removed skill: ${skillFile}`)
+  }
+  if (result.configRemoved) yield* Console.log(`Removed config: ${configPath}`)
 })
